@@ -173,7 +173,7 @@ export default function Sorteio() {
 					variant={"ghost"}
 					size={"icon"}
 					onClick={() => route.back()}
-					className="mb-2"
+					className="mb-2 text-megasena"
 				>
 					<ArrowLeft />
 				</Button>
@@ -187,7 +187,7 @@ export default function Sorteio() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-center mb-4">
-							{resultado.acumulado && (
+							{(resultado.acumulado && (
 								<Alert variant={"megasena"} className="mb-4 w-full">
 									<AlertTitle className="font-bold">Acumulou!</AlertTitle>
 									<AlertDescription>
@@ -195,6 +195,28 @@ export default function Sorteio() {
 										próximo sorteio é de {""}
 										<b>
 											{resultado.valorEstimadoProximoConcurso.toLocaleString(
+												"pt-BR",
+												{
+													style: "currency",
+													currency: "BRL",
+												},
+											)}
+										</b>
+										.
+									</AlertDescription>
+								</Alert>
+							)) || (
+								<Alert className="p-4" variant={"info"}>
+									<AlertTitle className="font-bold">
+										<b>{resultado.listaRateioPremio[0].numeroDeGanhadores}</b>{" "}
+										{resultado.listaRateioPremio[0].numeroDeGanhadores > 1
+											? "GANHADORES!"
+											: "GANHADOR!"}
+									</AlertTitle>
+									<AlertDescription>
+										Valor do prêmio:{" "}
+										<b>
+											{resultado.listaRateioPremio[0].valorPremio.toLocaleString(
 												"pt-BR",
 												{
 													style: "currency",
@@ -245,7 +267,6 @@ export default function Sorteio() {
 									id="customNames"
 									checked={useCustomNames}
 									onCheckedChange={setUseCustomNames}
-									
 								/>
 							</div>
 							<div>
