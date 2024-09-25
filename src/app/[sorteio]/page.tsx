@@ -179,7 +179,7 @@ export default function Sorteio() {
 				</Button>
 			</div>
 			<div className="flex lg:flex-row flex-col justify-center min-h-screen gap-4">
-				<Card className="w-full max-w-lg max-h-[500px] p-4">
+				<Card className="w-full max-w-lg max-h-[650px] p-4">
 					<CardHeader>
 						<CardTitle className="text-center text-2xl font-bold text-megasena">
 							Resultado do Sorteio #{sorteio}
@@ -253,6 +253,29 @@ export default function Sorteio() {
 									},
 								)}
 							</p>
+						</div>
+						<div className="flex flex-col items-center justify-center gap-2 mt-4 p-2 rounded-lg bg-megasena/10">
+							<div className="text-center">
+								{resultado.listaRateioPremio.map((premio, index) => {
+									if (premio.numeroDeGanhadores === 0) return null;
+									return (
+										<div key={index} className="mb-4">
+											<p className="text-md font-semibold">
+												{premio.descricaoFaixa}:{" "}
+												{premio.numeroDeGanhadores.toLocaleString("pt-BR")}{" "}
+												ganhadores
+											</p>
+											<p className="text-md">
+												Valor do prêmio:{" "}
+												{premio.valorPremio.toLocaleString("pt-BR", {
+													style: "currency",
+													currency: "BRL",
+												})}
+											</p>
+										</div>
+									);
+								})}
+							</div>
 						</div>
 					</CardContent>
 				</Card>
