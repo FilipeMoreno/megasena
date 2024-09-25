@@ -254,28 +254,26 @@ export default function Sorteio() {
 								)}
 							</p>
 						</div>
-						<div className="flex flex-col items-center justify-center gap-2 mt-4 p-2 rounded-lg bg-megasena/10">
-							<div className="text-center">
-								{resultado.listaRateioPremio.map((premio, index) => {
-									if (premio.numeroDeGanhadores === 0) return null;
-									return (
-										<div key={index} className="mb-4">
-											<p className="text-md font-semibold">
-												{premio.descricaoFaixa}:{" "}
-												{premio.numeroDeGanhadores.toLocaleString("pt-BR")}{" "}
-												ganhadores
-											</p>
-											<p className="text-md">
-												Valor do prêmio:{" "}
-												{premio.valorPremio.toLocaleString("pt-BR", {
-													style: "currency",
-													currency: "BRL",
-												})}
-											</p>
-										</div>
-									);
-								})}
-							</div>
+						<div className="flex flex-col items-center justify-center gap-4 mt-4 p-4 rounded-lg bg-megasena/10">
+							{resultado.listaRateioPremio.map((premio, index) => {
+								if (premio.numeroDeGanhadores === 0) return null;
+								return (
+									<div key={index} className="text-center">
+										<p className="text-md font-semibold">
+											{premio.descricaoFaixa}:{" "}
+											{premio.numeroDeGanhadores.toLocaleString("pt-BR")}{" "}
+											ganhadores
+										</p>
+										<p className="text-md">
+											Valor do prêmio:{" "}
+											{premio.valorPremio.toLocaleString("pt-BR", {
+												style: "currency",
+												currency: "BRL",
+											})}
+										</p>
+									</div>
+								);
+							})}
 						</div>
 					</CardContent>
 				</Card>
