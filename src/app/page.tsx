@@ -39,6 +39,9 @@ export default function Home() {
 			revalidateOnFocus: false,
 			onSuccess: (data) => {
 				localStorage.setItem("ultimoResultado", JSON.stringify(data));
+				const expiryDate = new Date();
+				expiryDate.setHours(expiryDate.getHours() + 1);
+				localStorage.setItem("cacheExpiry", expiryDate.toISOString());
 			},
 		},
 	);
@@ -47,21 +50,21 @@ export default function Home() {
 
 	useEffect(() => {
 		const cachedData = localStorage.getItem("ultimoResultado");
-		if (cachedData) {
-			const parsedData: Resultado = JSON.parse(cachedData);
-			setNumeroSorteio(parsedData.numero);
-			setResultadoAtual(parsedData);
-			const partesData = parsedData.dataProximoConcurso.split("/");
-			const dataProximoConcurso = new Date(
-				Number.parseInt(partesData[2]),
-				Number.parseInt(partesData[1]) - 1,
-				Number.parseInt(partesData[0]),
-			);
-			const agora = new Date();
+		const cacheExpiry = localStorage.getItem("cacheExpiry");
 
-			if (dataProximoConcurso < agora) {
+		if (cachedData && cacheExpiry) {
+			const expiryDate = new Date(cacheExpiry);
+			const now = new Date();
+
+			if (now > expiryDate) {
 				mutate();
+			} else {
+				const parsedData: Resultado = JSON.parse(cachedData);
+				setNumeroSorteio(parsedData.numero);
+				setResultadoAtual(parsedData);
 			}
+		} else {
+			mutate();
 		}
 	}, [mutate]);
 
