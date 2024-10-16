@@ -1,5 +1,11 @@
 "use client";
 
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +43,11 @@ export default function Sorteio() {
 	const [mensagens, setMensagens] = useState<string[]>([]);
 	const [useCustomNames, setUseCustomNames] = useState(false);
 	const { setTheme, theme } = useTheme();
+	const [rascunhos, setRascunhos] = useState<{ id: string; nome: string }[]>(
+		[],
+	);
+	const [rascunhoNome, setRascunhoNome] = useState<string>("");
+	const [selectedRascunho, setSelectedRascunho] = useState<string>("");
 
 	useEffect(() => {
 		const fetchResultado = async () => {
@@ -156,6 +167,52 @@ export default function Sorteio() {
 		});
 
 		setMensagens(newMensagens);
+	};
+
+	const saveRascunho = () => {
+		const rascunhoId = `rascunho-${new Date().getTime()}`;
+		const newRascunho = {
+			id: rascunhoId,
+			nome: rascunhoNome || `Aposta ${rascunhos.length + 1}`,
+		};
+		localStorage.setItem(rascunhoId, JSON.stringify(apostas));
+		setRascunhos([...rascunhos, newRascunho]);
+		setRascunhoNome("");
+	};
+
+	const loadRascunhos = () => {
+		const savedRascunhos = Object.keys(localStorage)
+			.filter((key) => key.startsWith("rascunho-"))
+			.map((key) => ({
+				id: key,
+				nome: JSON.parse(localStorage.getItem(key) || "{}").nome || "Aposta",
+			}));
+		setRascunhos(savedRascunhos);
+	};
+
+	const carregarRascunho = (rascunhoId: string) => {
+		const savedApostas = JSON.parse(localStorage.getItem(rascunhoId) || "[]");
+		setApostas(savedApostas);
+	};
+
+	useEffect(() => {
+		loadRascunhos();
+	}, []);
+
+	const handleRascunhoSelect = (
+		event: React.ChangeEvent<HTMLSelectElement>,
+	) => {
+		const rascunhoId = event.target.value;
+		if (!rascunhoId) return;
+
+		const savedApostas = JSON.parse(localStorage.getItem(rascunhoId) || "[]");
+		setApostas(savedApostas);
+		setSelectedRascunho(rascunhoId);
+	};
+
+	const deleteRascunho = (rascunhoId: string) => {
+		localStorage.removeItem(rascunhoId);
+		setRascunhos(rascunhos.filter((r) => r.id !== rascunhoId));
 	};
 
 	if (!resultado)
@@ -364,6 +421,62 @@ export default function Sorteio() {
 							Adicionar Aposta
 						</Button>
 					</Card>
+					<>
+						<div className="w-full max-w-lg">
+							<Card className="w-full p-4 mb-4">
+								<div className="mb-4">
+									<Input
+										type="text"
+										placeholder="Nome do rascunho"
+										value={rascunhoNome}
+										onChange={(e) => setRascunhoNome(e.target.value)}
+									/>
+								</div>
+
+								<div className="flex justify-center mb-4">
+									<Button variant="outline" onClick={saveRascunho}>
+										Salvar rascunho
+									</Button>
+								</div>
+
+								<Accordion type="single" collapsible>
+									<AccordionItem value="rascunhos">
+										<AccordionTrigger>Rascunhos Salvos</AccordionTrigger>
+										<AccordionContent>
+											<div className="flex flex-col gap-2">
+												{rascunhos.length > 0 ? (
+													rascunhos.map((rascunho) => (
+														<div
+															key={rascunho.id}
+															className="flex justify-between items-center"
+														>
+															<span>{rascunho.nome}</span>
+															<div>
+																<Button
+																	variant="ghost"
+																	onClick={() => carregarRascunho(rascunho.id)}
+																>
+																	Carregar
+																</Button>
+																<Button
+																	variant="ghost"
+																	onClick={() => deleteRascunho(rascunho.id)}
+																>
+																	Excluir
+																</Button>
+															</div>
+														</div>
+													))
+												) : (
+													<p>Nenhum rascunho salvo.</p>
+												)}
+											</div>
+										</AccordionContent>
+									</AccordionItem>
+								</Accordion>
+							</Card>
+						</div>
+					</>
 				</div>
 			</div>
 		</main>

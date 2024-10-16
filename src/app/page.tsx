@@ -194,33 +194,36 @@ export default function Home() {
 													{ style: "currency", currency: "BRL" },
 												)}
 											</b>
-											.
 										</AlertDescription>
 									</Alert>
 								)) || (
-									<Alert className="mt-4" variant={"info"}>
-										<AlertTitle className="font-bold">
-											<b>
-												{resultadoAtual.listaRateioPremio[0].numeroDeGanhadores}
-											</b>{" "}
-											{resultadoAtual.listaRateioPremio[0].numeroDeGanhadores >
-											1
-												? "GANHADORES!"
-												: "GANHADOR!"}
-										</AlertTitle>
-										<AlertDescription>
-											<p>
-												Valor do prêmio: {""}
+									<>
+										<Alert className="mt-4" variant={"info"}>
+											<AlertTitle className="font-bold">
 												<b>
-													{resultadoAtual.listaRateioPremio[0].valorPremio.toLocaleString(
-														"pt-BR",
-														{ style: "currency", currency: "BRL" },
-													)}
-												</b>
-												.
-											</p>
-										</AlertDescription>
-									</Alert>
+													{
+														resultadoAtual.listaRateioPremio[0]
+															.numeroDeGanhadores
+													}
+												</b>{" "}
+												{resultadoAtual.listaRateioPremio[0]
+													.numeroDeGanhadores > 1
+													? "GANHADORES!"
+													: "GANHADOR!"}
+											</AlertTitle>
+											<AlertDescription>
+												<p>
+													Valor do prêmio: {""}
+													<b>
+														{resultadoAtual.listaRateioPremio[0].valorPremio.toLocaleString(
+															"pt-BR",
+															{ style: "currency", currency: "BRL" },
+														)}
+													</b>
+												</p>
+											</AlertDescription>
+										</Alert>
+									</>
 								)}
 								<Button
 									variant={"megasena"}
