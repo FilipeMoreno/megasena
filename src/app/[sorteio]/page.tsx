@@ -537,9 +537,7 @@ export default function Sorteio() {
 								</div>
 							)}
 							<div className="flex justify-center mb-4 gap-2">
-								<Button onClick={saveApostasSupabase}>
-									Salvar apostas (Supabase)
-								</Button>
+								<Button onClick={saveApostasSupabase}>Salvar apostas</Button>
 							</div>
 							<Accordion type="single" collapsible>
 								<AccordionItem value="apostasSalvas">
