@@ -18,8 +18,8 @@ interface EmailTemplateProps {
 	acumulado: boolean;
 	valorPremio: number;
 	listaRateioPremio: {
-		descricaoFaixa: string;
-		numeroDeGanhadores: number;
+		descricao: string;
+		ganhadores: number;
 		valorPremio: number;
 	}[];
 	apostas: {
@@ -158,13 +158,12 @@ export const EmailTemplate: React.FC<EmailTemplateProps> = ({
 									<b>Prêmio Próximo Sorteio:</b> {valorPremioFormatado}
 								</Text>
 								{listaRateioPremio.map((premio, index) => {
-									if (premio.numeroDeGanhadores === 0) return null;
+									if (premio.ganhadores === 0) return null;
 									return (
 										<div key={index}>
 											<p style={{ fontWeight: "bold", margin: "8px 0 0 0" }}>
-												{premio.descricaoFaixa}:{" "}
-												{premio.numeroDeGanhadores.toLocaleString("pt-BR")}{" "}
-												ganhadores
+												{premio.descricao}:{" "}
+												{premio.ganhadores.toLocaleString("pt-BR")} ganhadores
 											</p>
 											<p style={{ margin: 0 }}>
 												Valor do prêmio:{" "}

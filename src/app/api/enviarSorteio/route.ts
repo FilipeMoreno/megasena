@@ -13,7 +13,7 @@ const resend = new Resend(RESEND_API_KEY);
 export async function GET() {
 	try {
 		const responseSorteio = await fetch(
-			"https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena",
+			"https://loteriascaixa-api.herokuapp.com/api/megasena/latest",
 		);
 		console.log(responseSorteio);
 		if (!responseSorteio.ok) {
@@ -24,8 +24,8 @@ export async function GET() {
 		}
 		const sorteio = await responseSorteio.json();
 
-		const dezenas: string[] = Array.isArray(sorteio.listaDezenas)
-			? sorteio.listaDezenas
+		const dezenas: string[] = Array.isArray(sorteio.dezenas)
+			? sorteio.dezenas
 			: [];
 
 		const { data: aposta, error: apostaError } = await supabase
@@ -47,13 +47,13 @@ export async function GET() {
 		const apostas = Array.isArray(aposta.apostas) ? aposta.apostas : [];
 
 		const element = React.createElement(EmailTemplate, {
-			concurso: sorteio.numero,
-			dataApuracao: sorteio.dataApuracao,
+			concurso: sorteio.concurso,
+			dataApuracao: sorteio.data,
 			dezenasSorteadas: dezenas,
 			apostas,
-			acumulado: sorteio.acumulado,
+			acumulado: sorteio.acumulou,
 			valorPremio: sorteio.valorEstimadoProximoConcurso,
-			listaRateioPremio: sorteio.listaRateioPremio,
+			listaRateioPremio: sorteio.premiacoes,
 		});
 
 		const emailHtml = render(element);
@@ -61,7 +61,7 @@ export async function GET() {
 		const { error: emailError } = await resend.emails.send({
 			from: RESEND_SENDER,
 			to: emailDestino,
-			subject: `Resultado ${sorteio.dataApuracao} - Mega Sena #${sorteio.numero}`,
+			subject: `Resultado Mega-Sena #${sorteio.concurso} - ${sorteio.data}`,
 			html: (await emailHtml).toString(),
 		});
 
