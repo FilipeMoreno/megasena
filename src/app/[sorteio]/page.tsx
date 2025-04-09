@@ -11,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, XIcon } from "lucide-react";
-import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -42,32 +42,61 @@ export default function Sorteio() {
 	);
 	const [mensagens, setMensagens] = useState<string[]>([]);
 	const [useCustomNames, setUseCustomNames] = useState(false);
-	const { setTheme, theme } = useTheme();
-	const [rascunhos, setRascunhos] = useState<{ id: string; nome: string }[]>(
-		[],
-	);
-	const [rascunhoNome, setRascunhoNome] = useState<string>("");
-	const [selectedRascunho, setSelectedRascunho] = useState<string>("");
+	const [apostasSalvas, setApostasSalvas] = useState<
+		{ id: string; nome: string; notificar_email?: string }[]
+	>([]);
+	const [nomeApostasSalvas, setNomeApostasSalvas] = useState<string>("");
+	const [notificarEmail, setNotificarEmail] = useState(false);
+	const [emailNotificacao, setEmailNotificacao] = useState("");
+	const [toast, setToast] = useState<string>("");
 
+	// Exibe o toast por 3 segundos
+	useEffect(() => {
+		if (toast) {
+			const timer = setTimeout(() => setToast(""), 3000);
+			return () => clearTimeout(timer);
+		}
+	}, [toast]);
+
+	// Função para mascarar e‑mail (ex.: email@gmail.com -> em*****@****.***)
+	const maskEmail = (email: string) => {
+		const [local, domain] = email.split("@");
+		const maskedLocal =
+			local.slice(0, 2) + "*".repeat(Math.max(local.length - 2, 0));
+		const maskedDomain = domain
+			? domain
+					.split(".")
+					.map((d) => d.slice(0, 2) + "*".repeat(Math.max(d.length - 2, 0)))
+					.join(".")
+			: "";
+		return `${maskedLocal}@${maskedDomain}`;
+	};
+
+	// Carrega o resultado do sorteio
 	useEffect(() => {
 		const fetchResultado = async () => {
 			if (!sorteio) return;
 
-			const cachedResultado = localStorage.getItem(`resultado-${sorteio}`);
-			if (cachedResultado) {
-				const parsedResultado = JSON.parse(cachedResultado);
-				if (parsedResultado.numero === Number.parseInt(sorteio, 10)) {
-					setResultado(parsedResultado);
-					return;
-				}
-			}
+			try {
+				const response = await fetch(
+					`https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/${sorteio}`,
+				);
 
-			const response = await fetch(
-				`https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/${sorteio}`,
-			);
-			const data: Resultado = await response.json();
-			setResultado(data);
-			localStorage.setItem(`resultado-${sorteio}`, JSON.stringify(data));
+				if (!response.ok) {
+					throw new Error("Sorteio não encontrado.");
+				}
+
+				const data: Resultado = await response.json();
+
+				if (!data || !data.numero) {
+					throw new Error("Sorteio não encontrado.");
+				}
+
+				setResultado(data);
+			} catch (error: any) {
+				setResultado(null);
+				setMensagens(["Erro: " + error.message]);
+			}
 		};
 
 		fetchResultado();
@@ -145,19 +174,34 @@ export default function Sorteio() {
 					const premio6 = resultado.listaRateioPremio.find(
 						(faixa) => faixa.faixa === 1,
 					);
-					return `Parabéns! Você e mais ${premio6?.numeroDeGanhadores.toLocaleString("pt-BR")} pessoas acertaram todos os números! Valor do prêmio: ${premio6?.valorPremio.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+					return `Parabéns! Você e mais ${premio6?.numeroDeGanhadores.toLocaleString(
+						"pt-BR",
+					)} pessoas acertaram todos os números! Valor do prêmio: ${premio6?.valorPremio.toLocaleString(
+						"pt-BR",
+						{ style: "currency", currency: "BRL" },
+					)}`;
 				}
 				case 5: {
 					const premio5 = resultado.listaRateioPremio.find(
 						(faixa) => faixa.faixa === 2,
 					);
-					return `Você e mais ${premio5?.numeroDeGanhadores.toLocaleString("pt-BR")} pessoas acertaram 5 números! Valor do prêmio: ${premio5?.valorPremio.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+					return `Você e mais ${premio5?.numeroDeGanhadores.toLocaleString(
+						"pt-BR",
+					)} pessoas acertaram 5 números! Valor do prêmio: ${premio5?.valorPremio.toLocaleString(
+						"pt-BR",
+						{ style: "currency", currency: "BRL" },
+					)}`;
 				}
 				case 4: {
 					const premio4 = resultado.listaRateioPremio.find(
 						(faixa) => faixa.faixa === 3,
 					);
-					return `Você e mais ${premio4?.numeroDeGanhadores.toLocaleString("pt-BR")} pessoas acertaram 4 números! Valor do prêmio: ${premio4?.valorPremio.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+					return `Você e mais ${premio4?.numeroDeGanhadores.toLocaleString(
+						"pt-BR",
+					)} pessoas acertaram 4 números! Valor do prêmio: ${premio4?.valorPremio.toLocaleString(
+						"pt-BR",
+						{ style: "currency", currency: "BRL" },
+					)}`;
 				}
 				case 0:
 					return "Você não acertou nenhum número.";
@@ -169,62 +213,105 @@ export default function Sorteio() {
 		setMensagens(newMensagens);
 	};
 
-	const saveRascunho = () => {
-		const rascunhoId = `rascunho-${new Date().getTime()}`;
-		const newRascunho = {
-			id: rascunhoId,
-			nome: rascunhoNome || `Aposta ${rascunhos.length + 1}`,
+	// Salva as apostas no Supabase
+	const saveApostasSupabase = async () => {
+		const novoRegistro = {
+			nome: nomeApostasSalvas || `Aposta ${apostasSalvas.length + 1}`,
+			apostas: apostas,
+			notificar_email: notificarEmail ? emailNotificacao : null,
 		};
-		localStorage.setItem(rascunhoId, JSON.stringify(apostas));
-		setRascunhos([...rascunhos, newRascunho]);
-		setRascunhoNome("");
+
+		const { data, error } = await supabase
+			.from("megasena_apostas")
+			.insert(novoRegistro);
+		if (error) {
+			console.error("Erro ao salvar apostas:", error);
+			setToast("Erro ao salvar apostas.");
+		} else if (data && data.length > 0) {
+			setToast("Apostas salvas com sucesso!");
+			// Recarrega a lista de apostas salvas após o registro
+			await loadApostasSalvas();
+			// Limpa os campos
+			setNomeApostasSalvas("");
+			setNotificarEmail(false);
+			setEmailNotificacao("");
+		}
 	};
 
-	const loadRascunhos = () => {
-		const savedRascunhos = Object.keys(localStorage)
-			.filter((key) => key.startsWith("rascunho-"))
-			.map((key) => ({
-				id: key,
-				nome: JSON.parse(localStorage.getItem(key) || "{}").nome || "Aposta",
-			}));
-		setRascunhos(savedRascunhos);
+	// Carrega as apostas salvas do Supabase
+	const loadApostasSalvas = async () => {
+		const { data, error } = await supabase
+			.from("megasena_apostas")
+			.select("*")
+			.order("created_at", { ascending: false });
+		if (error) {
+			console.error("Erro ao carregar apostas salvas:", error);
+		} else if (data) {
+			setApostasSalvas(data);
+		}
 	};
 
-	const carregarRascunho = (rascunhoId: string) => {
-		const savedApostas = JSON.parse(localStorage.getItem(rascunhoId) || "[]");
-		setApostas(savedApostas);
+	// Carrega um registro de apostas salvas do Supabase e executa o check automaticamente
+	const carregarApostasSalvas = async (id: string) => {
+		const { data, error } = await supabase
+			.from("megasena_apostas")
+			.select("*")
+			.eq("id", id)
+			.single();
+		if (error) {
+			console.error("Erro ao carregar as apostas salvas:", error);
+			setToast("Erro ao carregar apostas salvas.");
+		} else if (data) {
+			setApostas(data.apostas || []);
+			// Executa o check automaticamente após carregar as apostas
+			handleCheck();
+			setToast("Apostas carregadas com sucesso!");
+		}
+	};
+
+	// Exclui um registro de apostas salvas do Supabase
+	const deleteApostasSalvas = async (id: string) => {
+		const { error } = await supabase
+			.from("megasena_apostas")
+			.delete()
+			.eq("id", id);
+		if (error) {
+			console.error("Erro ao excluir as apostas salvas:", error);
+			setToast("Erro ao excluir apostas salvas.");
+		} else {
+			setApostasSalvas(apostasSalvas.filter((reg) => reg.id !== id));
+			setToast("Apostas excluídas com sucesso!");
+		}
 	};
 
 	useEffect(() => {
-		loadRascunhos();
+		loadApostasSalvas();
 	}, []);
 
-	const handleRascunhoSelect = (
-		event: React.ChangeEvent<HTMLSelectElement>,
-	) => {
-		const rascunhoId = event.target.value;
-		if (!rascunhoId) return;
-
-		const savedApostas = JSON.parse(localStorage.getItem(rascunhoId) || "[]");
-		setApostas(savedApostas);
-		setSelectedRascunho(rascunhoId);
-	};
-
-	const deleteRascunho = (rascunhoId: string) => {
-		localStorage.removeItem(rascunhoId);
-		setRascunhos(rascunhos.filter((r) => r.id !== rascunhoId));
-	};
-
-	if (!resultado)
+	if (!resultado) {
 		return (
-			<div className="flex flex-col gap-1 items-center justify-center w-screen h-screen">
-				<div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary" />
-				<p className="animate-dots">Carregando...</p>
+			<div className="flex flex-col gap-4 items-center justify-center w-screen h-screen">
+				<Alert variant={"destructive"} className="w-full max-w-md">
+					<AlertTitle>Erro</AlertTitle>
+					<AlertDescription>
+						Sorteio #{sorteio} não encontrado. Verifique o número do sorteio e
+						tente novamente.
+					</AlertDescription>
+				</Alert>
+				<Button onClick={() => route.back()} className="mt-4">
+					Voltar
+				</Button>
 			</div>
 		);
+	}
 
 	return (
 		<main className="bg-gray-50 p-4">
+			{toast && (
+				<div className="fixed top-4 right-4 z-50 rounded bg-green-500 p-4 text-white">
+					{toast}
+				</div>
+			)}
 			<div className="hidden w-full mb-4 lg:flex justify-between">
 				<Button
 					variant={"ghost"}
@@ -244,12 +331,12 @@ export default function Sorteio() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-center mb-4">
-							{(resultado.acumulado && (
+							{resultado.acumulado ? (
 								<Alert variant={"megasena"} className="mb-4 w-full">
 									<AlertTitle className="font-bold">Acumulou!</AlertTitle>
 									<AlertDescription>
 										O sorteio #{sorteio} acumulou! O prêmio estimado para o
-										próximo sorteio é de {""}
+										próximo sorteio é de{" "}
 										<b>
 											{resultado.valorEstimadoProximoConcurso.toLocaleString(
 												"pt-BR",
@@ -262,7 +349,7 @@ export default function Sorteio() {
 										.
 									</AlertDescription>
 								</Alert>
-							)) || (
+							) : (
 								<Alert className="p-4" variant={"info"}>
 									<AlertTitle className="font-bold">
 										<b>{resultado.listaRateioPremio[0].numeroDeGanhadores}</b>{" "}
@@ -421,62 +508,82 @@ export default function Sorteio() {
 							Adicionar Aposta
 						</Button>
 					</Card>
-					<>
-						<div className="w-full max-w-lg">
-							<Card className="w-full p-4 mb-4">
+					<div className="w-full max-w-lg">
+						<Card className="w-full p-4 mb-4">
+							<div className="mb-4">
+								<Input
+									type="text"
+									placeholder="Nome das apostas salvas"
+									value={nomeApostasSalvas}
+									onChange={(e) => setNomeApostasSalvas(e.target.value)}
+								/>
+							</div>
+							{/* Opção para notificação via e-mail */}
+							<div className="mb-4 flex items-center gap-2">
+								<label className="text-sm">Notificar por e-mail?</label>
+								<Switch
+									checked={notificarEmail}
+									onCheckedChange={setNotificarEmail}
+								/>
+							</div>
+							{notificarEmail && (
 								<div className="mb-4">
 									<Input
-										type="text"
-										placeholder="Nome do rascunho"
-										value={rascunhoNome}
-										onChange={(e) => setRascunhoNome(e.target.value)}
+										type="email"
+										placeholder="Seu e-mail"
+										value={emailNotificacao}
+										onChange={(e) => setEmailNotificacao(e.target.value)}
 									/>
 								</div>
-
-								<div className="flex justify-center mb-4">
-									<Button variant="outline" onClick={saveRascunho}>
-										Salvar rascunho
-									</Button>
-								</div>
-
-								<Accordion type="single" collapsible>
-									<AccordionItem value="rascunhos">
-										<AccordionTrigger>Rascunhos Salvos</AccordionTrigger>
-										<AccordionContent>
-											<div className="flex flex-col gap-2">
-												{rascunhos.length > 0 ? (
-													rascunhos.map((rascunho) => (
-														<div
-															key={rascunho.id}
-															className="flex justify-between items-center"
-														>
-															<span>{rascunho.nome}</span>
-															<div>
-																<Button
-																	variant="ghost"
-																	onClick={() => carregarRascunho(rascunho.id)}
-																>
-																	Carregar
-																</Button>
-																<Button
-																	variant="ghost"
-																	onClick={() => deleteRascunho(rascunho.id)}
-																>
-																	Excluir
-																</Button>
-															</div>
+							)}
+							<div className="flex justify-center mb-4 gap-2">
+								<Button onClick={saveApostasSupabase}>
+									Salvar apostas (Supabase)
+								</Button>
+							</div>
+							<Accordion type="single" collapsible>
+								<AccordionItem value="apostasSalvas">
+									<AccordionTrigger>Apostas Salvas</AccordionTrigger>
+									<AccordionContent>
+										<div className="flex flex-col gap-2">
+											{apostasSalvas.length > 0 ? (
+												apostasSalvas.map((registro) => (
+													<div
+														key={registro.id}
+														className="flex justify-between items-center"
+													>
+														<span>
+															{registro.nome}{" "}
+															{registro.notificar_email &&
+																`(${maskEmail(registro.notificar_email)})`}
+														</span>
+														<div>
+															<Button
+																variant="ghost"
+																onClick={() =>
+																	carregarApostasSalvas(registro.id)
+																}
+															>
+																Carregar
+															</Button>
+															<Button
+																variant="ghost"
+																onClick={() => deleteApostasSalvas(registro.id)}
+															>
+																Excluir
+															</Button>
 														</div>
-													))
-												) : (
-													<p>Nenhum rascunho salvo.</p>
-												)}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								</Accordion>
-							</Card>
-						</div>
-					</>
+													</div>
+												))
+											) : (
+												<p>Nenhuma aposta salva.</p>
+											)}
+										</div>
+									</AccordionContent>
+								</AccordionItem>
+							</Accordion>
+						</Card>
+					</div>
 				</div>
 			</div>
 		</main>

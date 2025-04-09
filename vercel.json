@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/enviarSorteio",
+      "schedule": "0 20 * * 3"
+    }
+  ]
+}
