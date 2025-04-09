@@ -221,7 +221,7 @@ export default function Sorteio() {
 			notificar_email: notificarEmail ? emailNotificacao : null,
 		};
 
-		const { data, error } = await supabase
+		const { data, error }: { data: any; error: any } = await supabase
 			.from("megasena_apostas")
 			.insert(novoRegistro);
 		if (error) {
