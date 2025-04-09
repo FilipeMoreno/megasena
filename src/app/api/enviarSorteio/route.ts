@@ -15,6 +15,7 @@ export async function GET() {
 		const responseSorteio = await fetch(
 			"https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena",
 		);
+		console.log(responseSorteio);
 		if (!responseSorteio.ok) {
 			return NextResponse.json(
 				{ error: "Erro ao buscar resultado do sorteio" },
