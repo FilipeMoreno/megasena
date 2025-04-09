@@ -26,6 +26,7 @@ interface EmailTemplateProps {
 		nome: string;
 		numeros: string[];
 	}[];
+	isWinner?: boolean;
 }
 
 export const EmailTemplate: React.FC<EmailTemplateProps> = ({
@@ -36,6 +37,7 @@ export const EmailTemplate: React.FC<EmailTemplateProps> = ({
 	acumulado,
 	valorPremio,
 	listaRateioPremio,
+	isWinner = false,
 }) => {
 	const isAcerto = (numero: string) => dezenasSorteadas.includes(numero);
 
@@ -64,6 +66,36 @@ export const EmailTemplate: React.FC<EmailTemplateProps> = ({
 					<Heading style={{ textAlign: "center", marginBottom: "16px" }}>
 						Resultado do Sorteio #{concurso}
 					</Heading>
+
+					{/* Mensagem especial para vencedor */}
+					{isWinner && (
+						<div
+							style={{
+								backgroundColor: "#fff3cd",
+								border: "1px solid #ffeeba",
+								color: "#856404",
+								padding: "16px",
+								borderRadius: "8px",
+								textAlign: "center",
+								marginBottom: "20px",
+							}}
+						>
+							<Heading
+								as="h2"
+								style={{
+									fontSize: "20px",
+									margin: "0 0 10px 0",
+									color: "#856404",
+								}}
+							>
+								🎉 Parabéns, você acertou as 6 dezenas! 🎉
+							</Heading>
+							<Text style={{ margin: 0 }}>
+								Você é o mais novo milionário do Brasil! Aproveite sua nova vida
+								💰
+							</Text>
+						</div>
+					)}
 
 					{/* Card "Acumulou" */}
 					{acumulado && (
@@ -123,7 +155,7 @@ export const EmailTemplate: React.FC<EmailTemplateProps> = ({
 											justifyContent: "center",
 											textAlign: "center",
 											fontWeight: "bold",
-											lineHeight: "36px", // garante texto centralizado em clientes que ignoram flex
+											lineHeight: "48px",
 										}}
 									>
 										{dezena}

@@ -12,10 +12,10 @@ const resend = new Resend(RESEND_API_KEY);
 
 export async function GET() {
 	try {
+		// Busca o resultado do sorteio
 		const responseSorteio = await fetch(
 			"https://loteriascaixa-api.herokuapp.com/api/megasena/latest",
 		);
-		console.log(responseSorteio);
 		if (!responseSorteio.ok) {
 			return NextResponse.json(
 				{ error: "Erro ao buscar resultado do sorteio" },
@@ -23,58 +23,149 @@ export async function GET() {
 			);
 		}
 		const sorteio = await responseSorteio.json();
-
+		// Garante que as dezenas são strings sem espaços extras
 		const dezenas: string[] = Array.isArray(sorteio.dezenas)
-			? sorteio.dezenas
+			? sorteio.dezenas.map((d: any) => String(d).trim())
 			: [];
+		const concurso = sorteio.concurso;
 
-		const { data: aposta, error: apostaError } = await supabase
+		// Busca todos os registros com notificar_email preenchido
+		const { data: apostasList, error: apostasError } = await supabase
 			.from("megasena_apostas")
-			.select("notificar_email, apostas")
-			.neq("notificar_email", null)
-			.order("created_at", { ascending: false })
-			.limit(1)
-			.single();
+			.select("id, notificar_email, apostas")
+			.neq("notificar_email", null);
 
-		if (apostaError || !aposta?.notificar_email) {
+		if (apostasError || !apostasList || apostasList.length === 0) {
 			return NextResponse.json(
 				{ message: "Nenhum e-mail para notificar" },
 				{ status: 200 },
 			);
 		}
-		const emailDestino = aposta.notificar_email;
 
-		const apostas = Array.isArray(aposta.apostas) ? aposta.apostas : [];
+		// Para cada usuário, processa o envio do e-mail
+		for (const apostaRegistro of apostasList) {
+			const emailDestino = apostaRegistro.notificar_email;
 
-		const element = React.createElement(EmailTemplate, {
-			concurso: sorteio.concurso,
-			dataApuracao: sorteio.data,
-			dezenasSorteadas: dezenas,
-			apostas,
-			acumulado: sorteio.acumulou,
-			valorPremio: sorteio.valorEstimadoProximoConcurso,
-			listaRateioPremio: sorteio.premiacoes,
-		});
+			// Verifica se já foi enviado um e-mail para esse usuário e concurso
+			const { data: emailEnviado, error: emailVerifError } = await supabase
+				.from("megasena_email_enviado")
+				.select("id")
+				.match({ email: emailDestino, concurso: concurso });
 
-		const emailHtml = render(element);
+			if (emailVerifError) {
+				console.error(
+					"Erro ao verificar registro de e-mail enviado para",
+					emailDestino,
+					emailVerifError,
+				);
+				continue;
+			}
+			if (emailEnviado && emailEnviado.length > 0) {
+				console.log(
+					`Email já enviado para ${emailDestino} no concurso ${concurso}.`,
+				);
+				continue; // não envia duplicado
+			}
 
-		const { error: emailError } = await resend.emails.send({
-			from: RESEND_SENDER,
-			to: emailDestino,
-			subject: `Resultado Mega-Sena #${sorteio.concurso} - ${sorteio.data}`,
-			html: (await emailHtml).toString(),
-		});
+			// Garante que as apostas estão em formato de array
+			let apostasUsuario: any[] = [];
+			if (typeof apostaRegistro.apostas === "string") {
+				try {
+					apostasUsuario = JSON.parse(apostaRegistro.apostas);
+				} catch {
+					apostasUsuario = [];
+				}
+			} else if (Array.isArray(apostaRegistro.apostas)) {
+				apostasUsuario = apostaRegistro.apostas;
+			}
 
-		if (emailError) {
-			return NextResponse.json(
-				{ error: "Erro ao enviar e-mail", message: emailError.message },
-				{ status: 500 },
-			);
+			// Verifica se o usuário tem alguma aposta vencedora
+			let isWinner = false;
+
+			const numerosSorteadosSet = new Set(dezenas.map(String));
+
+			for (const apostaItem of apostasUsuario) {
+				if (
+					!apostaItem ||
+					!Array.isArray(apostaItem.numeros) ||
+					apostaItem.numeros.length === 0
+				) {
+					continue;
+				}
+
+				const acertos = apostaItem.numeros.filter((n: any) =>
+					numerosSorteadosSet.has(String(n).trim()),
+				);
+
+				console.log("Aposta:", apostaItem.numeros, "Acertos:", acertos.length);
+
+				if (acertos.length === 6) {
+					isWinner = true;
+					break;
+				}
+
+				if (isWinner) {
+					return NextResponse.json({
+						message: "Aposta vencedora encontrada",
+					});
+				}
+			}
+
+			const subject = isWinner
+				? `Parabéns! Você é o mais novo milionário - Mega-Sena #${concurso}`
+				: `Resultado Mega-Sena #${concurso} - ${sorteio.data}`;
+
+			// Renderiza o template do e-mail, passando o flag "isWinner" para customização
+			const element = React.createElement(EmailTemplate, {
+				concurso: concurso,
+				dataApuracao: sorteio.data,
+				dezenasSorteadas: dezenas,
+				apostas: apostasUsuario,
+				acumulado: sorteio.acumulou,
+				valorPremio: sorteio.valorEstimadoProximoConcurso,
+				listaRateioPremio: sorteio.premiacoes,
+				isWinner,
+			});
+
+			const { error: emailError } = await resend.emails.send({
+				from: RESEND_SENDER,
+				to: emailDestino,
+				subject: subject,
+				html: await render(element),
+			});
+
+			if (emailError) {
+				console.error(
+					"Erro ao enviar e-mail para",
+					emailDestino,
+					"->",
+					emailError,
+				);
+				continue;
+			}
+
+			// Após envio com sucesso, registra na tabela para evitar duplicidade
+			const { error: insertError } = await supabase
+				.from("megasena_email_enviado")
+				.insert([
+					{ email: emailDestino, concurso: concurso, data_envio: new Date() },
+				]);
+
+			if (insertError) {
+				console.error(
+					"Erro ao inserir registro de envio para",
+					emailDestino,
+					"->",
+					insertError,
+				);
+			}
 		}
 
-		return NextResponse.json({ message: "E-mail enviado com sucesso" });
+		return NextResponse.json({
+			message: "Processo de envio de e-mails concluído",
+		});
 	} catch (error) {
-		console.error(error);
+		console.error("Erro interno:", error);
 		return NextResponse.json(
 			{ error: "Erro interno no servidor" },
 			{ status: 500 },
