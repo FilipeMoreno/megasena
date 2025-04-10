@@ -96,7 +96,7 @@ export default function Sorteio() {
 				setResultado(data);
 			} catch (error: any) {
 				setResultado(null);
-				setMensagens(["Erro: " + error.message]);
+				setMensagens([`Erro: ${error.message}`]);
 			}
 		};
 
@@ -339,7 +339,7 @@ export default function Sorteio() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-center mb-4">
-							{resultado.acumulado ? (
+							{resultado?.acumulado ? (
 								<Alert variant={"megasena"} className="mb-4 w-full">
 									<AlertTitle className="font-bold">Acumulou!</AlertTitle>
 									<AlertDescription>
@@ -360,15 +360,19 @@ export default function Sorteio() {
 							) : (
 								<Alert className="p-4" variant={"info"}>
 									<AlertTitle className="font-bold">
-										<b>{resultado.listaRateioPremio[0].numeroDeGanhadores}</b>{" "}
-										{resultado.listaRateioPremio[0].numeroDeGanhadores > 1
+										<b>
+											{resultado?.listaRateioPremio[0]?.numeroDeGanhadores ??
+												"0"}
+										</b>{" "}
+										{(resultado?.listaRateioPremio[0]?.numeroDeGanhadores ??
+											0) > 1
 											? "GANHADORES!"
 											: "GANHADOR!"}
 									</AlertTitle>
 									<AlertDescription>
 										Valor do prêmio:{" "}
 										<b>
-											{resultado.listaRateioPremio[0].valorPremio.toLocaleString(
+											{resultado?.listaRateioPremio[0].valorPremio.toLocaleString(
 												"pt-BR",
 												{
 													style: "currency",
@@ -384,7 +388,7 @@ export default function Sorteio() {
 						<div className="text-center mb-4">
 							<p className="text-md mb-2">Dezenas Sorteadas:</p>
 							<div className="flex justify-center space-x-2">
-								{resultado.listaDezenas.map((dezena, index) => (
+								{resultado?.listaDezenas.map((dezena, index) => (
 									<span
 										key={index}
 										className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-primary text-primary-foreground font-bold"
@@ -397,7 +401,7 @@ export default function Sorteio() {
 						<div className="flex flex-col items-center justify-center gap-2">
 							<p className="text-md">Prêmio estimado para o próximo sorteio:</p>
 							<p className="text-lg p-2 font-bold rounded-lg bg-megasena text-megasena-foreground">
-								{resultado.valorEstimadoProximoConcurso.toLocaleString(
+								{resultado?.valorEstimadoProximoConcurso.toLocaleString(
 									"pt-BR",
 									{
 										style: "currency",
@@ -407,7 +411,7 @@ export default function Sorteio() {
 							</p>
 						</div>
 						<div className="flex flex-col items-center justify-center gap-4 mt-4 p-4 rounded-lg bg-megasena/10">
-							{resultado.listaRateioPremio.map((premio, index) => {
+							{resultado?.listaRateioPremio?.map((premio, index) => {
 								if (premio.numeroDeGanhadores === 0) return null;
 								return (
 									<div key={index} className="text-center">
@@ -495,10 +499,12 @@ export default function Sorteio() {
 												}
 												className={cn({
 													"border-green-500":
+														resultado &&
 														mensagens[apostaIndex] &&
 														num !== "" &&
 														resultado.listaDezenas.includes(num),
 													"border-red-500":
+														resultado &&
 														mensagens[apostaIndex] &&
 														num !== "" &&
 														!resultado.listaDezenas.includes(num),
