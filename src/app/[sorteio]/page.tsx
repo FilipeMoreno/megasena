@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ export default function Sorteio() {
 	const searchParams = usePathname();
 	const sorteio = searchParams.split("/")[1];
 	const [resultado, setResultado] = useState<Resultado | null>(null);
+	const [naoEncontrado, setNaoEncontrado] = useState(false);
 	const [apostas, setApostas] = useState<{ numeros: string[]; nome: string }[]>(
 		[{ numeros: ["", "", "", "", "", ""], nome: "" }],
 	);
@@ -50,7 +52,6 @@ export default function Sorteio() {
 	const [emailNotificacao, setEmailNotificacao] = useState("");
 	const [toast, setToast] = useState<string>("");
 
-	// Exibe o toast por 3 segundos
 	useEffect(() => {
 		if (toast) {
 			const timer = setTimeout(() => setToast(""), 3000);
@@ -58,7 +59,6 @@ export default function Sorteio() {
 		}
 	}, [toast]);
 
-	// Função para mascarar e‑mail (ex.: email@gmail.com -> em*****@****.***)
 	const maskEmail = (email: string) => {
 		const [local, domain] = email.split("@");
 		const maskedLocal =
@@ -72,7 +72,6 @@ export default function Sorteio() {
 		return `${maskedLocal}@${maskedDomain}`;
 	};
 
-	// Carrega o resultado do sorteio
 	useEffect(() => {
 		const fetchResultado = async () => {
 			if (!sorteio) return;
@@ -83,12 +82,14 @@ export default function Sorteio() {
 				);
 
 				if (!response.ok) {
+					setNaoEncontrado(true);
 					throw new Error("Sorteio não encontrado.");
 				}
 
 				const data: Resultado = await response.json();
 
 				if (!data || !data.numero) {
+					setNaoEncontrado(true);
 					throw new Error("Sorteio não encontrado.");
 				}
 
@@ -213,7 +214,6 @@ export default function Sorteio() {
 		setMensagens(newMensagens);
 	};
 
-	// Salva as apostas no Supabase
 	const saveApostasSupabase = async () => {
 		const novoRegistro = {
 			nome: nomeApostasSalvas || `Aposta ${apostasSalvas.length + 1}`,
@@ -238,7 +238,6 @@ export default function Sorteio() {
 		}
 	};
 
-	// Carrega as apostas salvas do Supabase
 	const loadApostasSalvas = async () => {
 		const { data, error } = await supabase
 			.from("megasena_apostas")
@@ -251,7 +250,6 @@ export default function Sorteio() {
 		}
 	};
 
-	// Carrega um registro de apostas salvas do Supabase e executa o check automaticamente
 	const carregarApostasSalvas = async (id: string) => {
 		const { data, error } = await supabase
 			.from("megasena_apostas")
@@ -263,13 +261,12 @@ export default function Sorteio() {
 			setToast("Erro ao carregar apostas salvas.");
 		} else if (data) {
 			setApostas(data.apostas || []);
-			// Executa o check automaticamente após carregar as apostas
+
 			handleCheck();
 			setToast("Apostas carregadas com sucesso!");
 		}
 	};
 
-	// Exclui um registro de apostas salvas do Supabase
 	const deleteApostasSalvas = async (id: string) => {
 		const { error } = await supabase
 			.from("megasena_apostas")
@@ -288,7 +285,18 @@ export default function Sorteio() {
 		loadApostasSalvas();
 	}, []);
 
-	if (!resultado) {
+	const loading = !naoEncontrado && !resultado;
+
+	if (loading) {
+		return (
+			<div className="flex flex-col gap-1 items-center justify-center w-screen h-screen">
+				<div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary" />
+				<p className="animate-dots">carregando...</p>
+			</div>
+		);
+	}
+
+	if (naoEncontrado) {
 		return (
 			<div className="flex flex-col gap-4 items-center justify-center w-screen h-screen">
 				<Alert variant={"destructive"} className="w-full max-w-md">
@@ -520,7 +528,7 @@ export default function Sorteio() {
 							</div>
 							{/* Opção para notificação via e-mail */}
 							<div className="mb-4 flex items-center gap-2">
-								<label className="text-sm">Notificar por e-mail?</label>
+								<Label className="text-sm">Notificar por e-mail?</Label>
 								<Switch
 									checked={notificarEmail}
 									onCheckedChange={setNotificarEmail}
